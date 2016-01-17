@@ -9,6 +9,11 @@ enum AnimateState {
     Up, Down
 }
 
+enum ConversationState
+{
+    NPC, Player
+}
+
 public class Player : MonoBehaviour {
 
     public float MoveSpeed = 5.0f;
@@ -21,14 +26,23 @@ public class Player : MonoBehaviour {
   
     private Texture[] textures;
 
+    public bool InteractingWith = false;
+    NPC InteractingNPC = null;
+
+    private ConversationState ConvState = ConversationState.NPC;
+
+    private GameObject PlayerConvText;
+
 	// Use this for initialization
 	void Start () {
         Facing = FacingDirection.Left;
         Animation = AnimateState.Down;
-
+        
         PlayerCamera = Camera.main;
         TargetPosition = transform.position;
-        
+
+        PlayerConvText = GameObject.Find("PlayerConvText");
+
         textures = new Texture[4];
 
         textures[0] = (Texture)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Resources\\Drawings\\Characters\\theblind_back.png", typeof(Texture));
@@ -40,26 +54,55 @@ public class Player : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {        
         HandleKeyPress();
-        Animate();        
+        Animate();
 
-        if (transform.position != TargetPosition)
+        if (!InteractingWith)
         {
-            bool valid = true;
-            Vector3 newpos = Vector3.Lerp(this.transform.position, TargetPosition, Time.deltaTime * 10);
-            foreach (NPC npc in (NPC[])GameObject.FindObjectsOfType<NPC>())
+            if (transform.position != TargetPosition)
             {
-                float dist = Vector3.Distance(newpos, npc.gameObject.transform.position);
-                if (dist < 3.0f)
+                bool valid = true;
+                Vector3 newpos = Vector3.Lerp(this.transform.position, TargetPosition, Time.deltaTime * 10);
+                foreach (NPC npc in (NPC[])GameObject.FindObjectsOfType<NPC>())
                 {
-                    valid = false;
-                    break;
+                    float dist = Vector3.Distance(newpos, npc.gameObject.transform.position);
+                    if (dist < 3.0f)
+                    {
+                        valid = false;
+                        break;
+                    }
                 }
-            }
 
-            if(valid)
-                this.transform.position = newpos;
-        }        
+                if (valid)
+                    this.transform.position = newpos;
+            }
+        }
+        else
+        {
+            string n = InteractingNPC.GetConversationLine();
+            if (n != "END")
+                DisplayText(n);
+            else
+            {
+                InteractingWith = false;
+                InteractingNPC.SetConversationLine(true);
+                PlayerConvText.GetComponent<TextMesh>().text = "";
+            }
+        }
 	}
+
+    private void DisplayText(string n)
+    {
+        if (ConvState == ConversationState.NPC)
+        {
+            InteractingNPC.SetConversationLine();
+            PlayerConvText.GetComponent<TextMesh>().text = "";
+        }
+        else
+        {
+            PlayerConvText.GetComponent<TextMesh>().text = InteractingNPC.GetConversationLine();
+            InteractingNPC.SetConversationLine(true);
+        }
+    }
     
     void Animate()
     {        
@@ -75,7 +118,56 @@ public class Player : MonoBehaviour {
     }
 
     void HandleKeyPress()
-    {        
+    {
+        if (Input.GetKeyUp(KeyCode.E))
+        {
+            if (!InteractingWith)
+            {
+                //interactie met iets
+                NPC closest = null;
+                float c = float.MaxValue;
+
+                bool looping = true;
+                while (looping)
+                {
+                    foreach (NPC npc in (NPC[])GameObject.FindObjectsOfType<NPC>())
+                    {
+                        bool nothit = true;
+                        float dist = Vector3.Distance(this.transform.position, npc.gameObject.transform.position);
+                        if (dist < c)
+                        {
+                            closest = npc;
+                            c = dist;
+
+                            nothit = true;
+                        }
+
+                        if (nothit)
+                            looping = false;
+                    }
+                }
+                if (c < 3.5f) //interact range!!!
+                {
+                    if (closest.Interact())
+                    {                        
+                        //zoom in camera
+                        InteractingWith = true;
+                        InteractingNPC = closest;
+                    }
+                }
+            }
+            else
+            { 
+                //volgende regel?
+                if (ConvState == ConversationState.NPC)
+                    ConvState = ConversationState.Player;
+                else
+                    ConvState = ConversationState.NPC;
+
+                InteractingNPC.NextConversationLine();
+            }
+        }
+
         if (Input.GetKey(KeyCode.W))
         {
             TargetPosition += new Vector3(0, 0, 1.0f / MoveSpeed);
