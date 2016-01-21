@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public enum FacingDirection { 
     Left,Right,Front,Back
@@ -17,7 +18,10 @@ enum ConversationState
 public class Player : MonoBehaviour {
 
     public float MoveSpeed = 5.0f;
-  
+    
+    [HideInInspector()]
+    public bool InteractingWith = false;
+
     Camera PlayerCamera;    
     Vector3 TargetPosition;
 
@@ -26,15 +30,30 @@ public class Player : MonoBehaviour {
   
     private Texture[] textures;
 
-    public bool InteractingWith = false;
     NPC InteractingNPC = null;
 
     private ConversationState ConvState = ConversationState.NPC;
 
     private GameObject PlayerConvText;
+    
+    public bool GodMode = true;
+    private List<Item> Inventory;
+    private Item activeItem;
 
 	// Use this for initialization
 	void Start () {
+
+        Inventory = new List<Item>();
+
+        if (GodMode)
+        {
+            Weapon w = new Weapon(WeaponType.Rifle);
+            Inventory.Add(w);
+        }
+
+        //set active (for now)
+        activeItem = Inventory[0];
+
         Facing = FacingDirection.Left;
         Animation = AnimateState.Down;
         
@@ -48,7 +67,9 @@ public class Player : MonoBehaviour {
         textures[0] = (Texture)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Resources\\Drawings\\Characters\\theblind_back.png", typeof(Texture));
         textures[1] = (Texture)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Resources\\Drawings\\Characters\\theblind_front.png", typeof(Texture));
         textures[2] = (Texture)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Resources\\Drawings\\Characters\\theblind_left.png", typeof(Texture));
-        textures[3] = (Texture)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Resources\\Drawings\\Characters\\theblind_right.png", typeof(Texture));       
+        textures[3] = (Texture)UnityEditor.AssetDatabase.LoadAssetAtPath("Assets\\Resources\\Drawings\\Characters\\theblind_right.png", typeof(Texture));
+
+        GetComponent<Renderer>().material.mainTexture = textures[2];
 	}
 	
 	// Update is called once per frame
@@ -83,11 +104,16 @@ public class Player : MonoBehaviour {
                 DisplayText(n);
             else
             {
+                ConvState = ConversationState.NPC;
+
                 InteractingWith = false;
                 InteractingNPC.SetConversationLine(true);
+                
                 PlayerConvText.GetComponent<TextMesh>().text = "";
             }
         }
+                       
+        ((Weapon)activeItem).UpdatePosition(this.transform);
 	}
 
     private void DisplayText(string n)
@@ -115,6 +141,21 @@ public class Player : MonoBehaviour {
             transform.localScale = Vector3.Lerp(this.transform.localScale, new Vector3(transform.localScale.x, transform.localScale.y, 0.195f), Time.deltaTime * 2);
         else                    
             transform.localScale = Vector3.Lerp(this.transform.localScale, new Vector3(transform.localScale.x, transform.localScale.y, 0.160f), Time.deltaTime * 2);       
+    }
+
+    private void SetItemFacing(ItemFacing facing)
+    {
+        activeItem.Facing = facing;
+    }
+
+    private void SetItemMoving(bool state)
+    {
+        activeItem.Moving = state;
+
+        if (state && activeItem.GetType() == typeof(Weapon))        
+            ((Weapon)activeItem).AnimTimerLimit = 0.6f;
+        else
+            ((Weapon)activeItem).AnimTimerLimit = 1.7f;                          
     }
 
     void HandleKeyPress()
@@ -168,18 +209,26 @@ public class Player : MonoBehaviour {
             }
         }
 
+        SetItemMoving(false);
+
         if (Input.GetKey(KeyCode.W))
         {
+            SetItemMoving(true);
             TargetPosition += new Vector3(0, 0, 1.0f / MoveSpeed);
+            SetItemFacing(ItemFacing.Up);
+
             if (Facing != FacingDirection.Front)
             {
                 GetComponent<Renderer>().material.mainTexture = textures[0];
-                Facing = FacingDirection.Front;
+                Facing = FacingDirection.Front;                
             }
         }
         if (Input.GetKey(KeyCode.S))
         {
+            SetItemMoving(true);            
             TargetPosition += new Vector3(0, 0, -1.0f / MoveSpeed);
+            SetItemFacing(ItemFacing.Down);
+
             if (Facing != FacingDirection.Back)
             {
                 //change sprite
@@ -189,7 +238,9 @@ public class Player : MonoBehaviour {
         }
         if (Input.GetKey(KeyCode.A))
         {
+            SetItemMoving(true);
             TargetPosition += new Vector3(-1.0f / MoveSpeed, 0, 0);
+            SetItemFacing(ItemFacing.Left);
 
             if (Facing != FacingDirection.Left)
             {
@@ -199,12 +250,15 @@ public class Player : MonoBehaviour {
         }
         if (Input.GetKey(KeyCode.D))
         {
+            SetItemMoving(true);
             TargetPosition += new Vector3(1.0f / MoveSpeed, 0, 0);
+            SetItemFacing(ItemFacing.Right);
+
             if (Facing != FacingDirection.Right)
             {
                 GetComponent<Renderer>().material.mainTexture = textures[3];
                 Facing = FacingDirection.Right;
             }
-        }              
+        }                      
     }
 }

@@ -4,8 +4,10 @@ using System;
 
 public class Conversation : MonoBehaviour {
 
+    public GameObject ConversationTextMesh;
+
     [TextArea(3, 10)]
-    public string ConversationText = "This text will appear in a text area that automatically expands";
+    public string ConversationText = "";
 
     private string[] ConversationLines;
     private int ConversationIndex = -1;

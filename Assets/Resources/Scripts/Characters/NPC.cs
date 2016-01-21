@@ -3,7 +3,7 @@ using System.Collections;
 
 public class NPC : MonoBehaviour {
     
-    public GameObject character;
+    private GameObject character;
     
     private AnimateState Animation;
     private int AnimationTime;
@@ -12,14 +12,11 @@ public class NPC : MonoBehaviour {
 
     private bool InteractedWith = false;
 
-         GameObject NPCConvText;
-
 	void Start () {
         AnimationTime = (int)Random.Range(2.0f, 4.0f);
         character = this.gameObject;
 
-        NPCConversation = this.GetComponent<Conversation>();
-        NPCConvText = GameObject.Find("NPCConvText"); //dit werkt alleen voor 1 object...
+        NPCConversation = this.GetComponent<Conversation>();        
 	}
 	
 	// Update is called once per frame
@@ -68,8 +65,8 @@ public class NPC : MonoBehaviour {
     internal void SetConversationLine(bool empty = false)
     {
         if (!empty)
-            NPCConvText.GetComponent<TextMesh>().text = GetConversationLine();
+            NPCConversation.ConversationTextMesh.GetComponent<TextMesh>().text = GetConversationLine();
         else
-            NPCConvText.GetComponent<TextMesh>().text = "";
+            NPCConversation.ConversationTextMesh.GetComponent<TextMesh>().text = "";
     }
 }
